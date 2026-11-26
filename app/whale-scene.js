@@ -1,12 +1,14 @@
 "use client";
 
-import { Canvas, useFrame, useLoader } from "@react-three/fiber";
+import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
 import { Suspense, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 function Whale() {
   const whale = useRef();
+  const pointer = useRef({ x: 0, y: 0 });
+  const canvas = useThree((state) => state.gl.domElement);
   const { scene, animations } = useLoader(GLTFLoader, "/models/whale.glb");
   const mixer = useMemo(() => new THREE.AnimationMixer(scene), [scene]);
 
@@ -19,18 +21,38 @@ function Whale() {
     };
   }, [animations, mixer, scene]);
 
+  useEffect(() => {
+    const followPointer = (event) => {
+      if (event.pointerType === "touch") return;
+      const bounds = canvas.getBoundingClientRect();
+      pointer.current.x = THREE.MathUtils.clamp(
+        (event.clientX - (bounds.left + bounds.width / 2)) / (window.innerWidth / 2), -1, 1,
+      );
+      pointer.current.y = THREE.MathUtils.clamp(
+        ((bounds.top + bounds.height / 2) - event.clientY) / (window.innerHeight / 2), -1, 1,
+      );
+    };
+    const resetPointer = () => { pointer.current.x = 0; pointer.current.y = 0; };
+    window.addEventListener("pointermove", followPointer, { passive: true });
+    window.addEventListener("blur", resetPointer);
+    return () => {
+      window.removeEventListener("pointermove", followPointer);
+      window.removeEventListener("blur", resetPointer);
+    };
+  }, [canvas]);
+
   useFrame((state, delta) => {
     mixer.update(delta);
     if (!whale.current) return;
     const time = state.clock.getElapsedTime();
     const easing = 1 - Math.exp(-3 * delta);
-    whale.current.rotation.y = THREE.MathUtils.lerp(whale.current.rotation.y, state.pointer.x * 0.18 - 0.88, easing);
-    whale.current.rotation.x = THREE.MathUtils.lerp(whale.current.rotation.x, -state.pointer.y * 0.12 + 0.06, easing);
+    whale.current.rotation.y = THREE.MathUtils.lerp(whale.current.rotation.y, -Math.PI / 2 + pointer.current.x * 0.45, easing);
+    whale.current.rotation.x = THREE.MathUtils.lerp(whale.current.rotation.x, -pointer.current.y * 0.25, easing);
     whale.current.position.y = Math.sin(time * 0.85) * 0.11;
   });
 
   return (
-    <group ref={whale}>
+    <group ref={whale} rotation={[0, -Math.PI / 2, 0]}>
       <primitive object={scene} position={[0.35, 0, 0]} />
     </group>
   );
