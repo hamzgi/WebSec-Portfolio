@@ -6,7 +6,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 function Whale() {
-  const whale = useRef();
+  const whale = useRef<THREE.Group>(null);
   const pointer = useRef({ x: 0, y: 0 });
   const canvas = useThree((state) => state.gl.domElement);
   const { scene, animations } = useLoader(GLTFLoader, "/models/whale.glb?v=flippers-1");
@@ -22,7 +22,7 @@ function Whale() {
   }, [animations, mixer, scene]);
 
   useEffect(() => {
-    const followPointer = (event) => {
+    const followPointer = (event: PointerEvent) => {
       if (event.pointerType === "touch") return;
       const bounds = canvas.getBoundingClientRect();
       pointer.current.x = THREE.MathUtils.clamp(
@@ -59,13 +59,13 @@ function Whale() {
 }
 
 function Bubbles() {
-  const group = useRef();
+  const group = useRef<THREE.Group>(null);
   useFrame((state) => {
     if (group.current) group.current.rotation.y = state.clock.getElapsedTime() * 0.06;
   });
   return (
     <group ref={group}>
-      {[[2.7, 1.4, -1], [-2.8, -1.45, -1], [-2.4, 1.7, -2], [2.55, -1.6, -1.4]].map((point, index) => (
+      {([[2.7, 1.4, -1], [-2.8, -1.45, -1], [-2.4, 1.7, -2], [2.55, -1.6, -1.4]] as [number, number, number][]).map((point, index) => (
         <mesh key={index} position={point}>
           <sphereGeometry args={[0.07 + index * 0.025, 20, 20]} />
           <meshPhysicalMaterial color="#ffffff" transparent opacity={0.6} roughness={0.1} transmission={0.55} />

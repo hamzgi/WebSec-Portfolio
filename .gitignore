@@ -1,10 +1,10 @@
 node_modules/
 .next/
 out/
-.env
-.env.local
-.env*.local
+.env*
 !.env.example
+next-env.d.ts
+*.tsbuildinfo
 *.log
 .DS_Store
 *.blend1
