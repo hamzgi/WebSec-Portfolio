@@ -2,13 +2,15 @@
   "name": "security-portfolio-sample",
   "version": "0.1.0",
   "private": true,
-  "engines": { "node": "24.x" },
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "node ./node_modules/next/dist/bin/next dev",
     "build": "node ./node_modules/next/dist/bin/next build",
     "start": "node ./node_modules/next/dist/bin/next start",
     "typecheck": "node ./node_modules/typescript/bin/tsc --noEmit",
-    "test": "node --conditions=react-server --import tsx --test tests/models.test.ts",
+    "test": "node --conditions=react-server --import tsx --test tests/*.test.ts",
     "db:check": "node --conditions=react-server --import tsx scripts/check-db.ts"
   },
   "dependencies": {
@@ -16,6 +18,7 @@
     "@react-three/fiber": "9.8.2",
     "mongoose": "^9.13.1",
     "next": "16.4.6",
+    "next-auth": "^5.0.0-beta.32",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "server-only": "^0.0.1",
