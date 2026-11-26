@@ -119,8 +119,42 @@ def leaf(name, points, thickness, mat):
     return obj
 
 tail = leaf("Tail flukes", [(-2.24, 0, -.12), (-2.58, -.10, .46), (-2.85, -.16, .94), (-2.80, -.16, 1.12), (-2.62, -.12, 1.18), (-2.40, -.04, .95), (-2.27, 0, .83), (-2.12, .04, 1.00), (-1.95, .12, 1.18), (-1.77, .16, 1.12), (-1.74, .16, .94), (-1.94, .10, .46)], .12, blue)
-fin_front = leaf("Front fin", [(-.75,-.72,-.35), (-1.02,-1.12,-.40), (-1.16,-1.43,-.64), (-.98,-1.46,-.72), (-.68,-1.23,-.60), (-.36,-.72,-.42)], .10, blue)
-fin_back = leaf("Far fin", [(.70,.58,-.30), (.94,.90,-.24), (1.18,1.15,-.20), (1.23,1.12,-.35), (1.02,.84,-.45), (.75,.56,-.42)], .08, blue)
+
+def flipper(name, side):
+    # Paired tapered, rounded flippers extend along the width of the whale.
+    # Their inner ends sit inside the body, keeping the joints hidden as they move.
+    sections = [
+        (.90, .0, .06, .05), (1.08, .0, .28, .18),
+        (1.28, .01, .31, .19), (1.49, .05, .29, .17),
+        (1.67, .10, .24, .14), (1.80, .15, .15, .09),
+        (1.86, .17, .015, .012),
+    ]
+    segments = 24
+    verts, faces = [], []
+    for distance, lift, depth, height in sections:
+        for j in range(segments):
+            angle = 2 * math.pi * j / segments
+            verts.append((.05 + math.cos(angle) * depth, side * distance, -.38 + lift + math.sin(angle) * height))
+    for i in range(len(sections) - 1):
+        for j in range(segments):
+            a, b = i * segments + j, i * segments + (j + 1) % segments
+            c, d = (i + 1) * segments + (j + 1) % segments, (i + 1) * segments + j
+            faces.append((a, b, c, d) if side > 0 else (d, c, b, a))
+    data = bpy.data.meshes.new(name)
+    data.from_pydata(verts, [], faces)
+    data.materials.append(blue)
+    data.update()
+    obj = bpy.data.objects.new(name, data)
+    bpy.context.collection.objects.link(obj)
+    for poly in data.polygons:
+        poly.use_smooth = True
+    smooth = obj.modifiers.new("Smooth flipper", "SUBSURF")
+    smooth.levels = 2
+    smooth.render_levels = 2
+    return obj
+
+fin_front = flipper("Left flipper", -1)
+fin_back = flipper("Right flipper", 1)
 
 def curve(name, points, thickness, mat):
     c = bpy.data.curves.new(name, "CURVE")
@@ -216,7 +250,7 @@ root.head, root.tail = (0, 0, 0), (-.8, 0, 0)
 tail_bone = arm_data.edit_bones.new("Tail")
 tail_bone.head, tail_bone.tail = (-1.35, 0, 0), (-2.30, 0, .3)
 tail_bone.parent = root
-for name, head, end in [("Fin.L", (-.55,-.95,-.38), (-.95,-1.4,-.6)), ("Fin.R", (.75,.8,-.35), (1.15,1.12,-.32))]:
+for name, head, end in [("Fin.L", (.05,-1.05,-.38), (.05,-1.65,-.28)), ("Fin.R", (.05,1.05,-.38), (.05,1.65,-.28))]:
     bone = arm_data.edit_bones.new(name)
     bone.head, bone.tail, bone.parent = head, end, root
 bpy.ops.object.mode_set(mode="OBJECT")

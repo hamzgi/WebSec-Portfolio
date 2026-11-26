@@ -9,7 +9,7 @@ function Whale() {
   const whale = useRef();
   const pointer = useRef({ x: 0, y: 0 });
   const canvas = useThree((state) => state.gl.domElement);
-  const { scene, animations } = useLoader(GLTFLoader, "/models/whale.glb");
+  const { scene, animations } = useLoader(GLTFLoader, "/models/whale.glb?v=flippers-1");
   const mixer = useMemo(() => new THREE.AnimationMixer(scene), [scene]);
 
   useEffect(() => {
