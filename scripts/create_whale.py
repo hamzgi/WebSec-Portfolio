@@ -27,13 +27,12 @@ def material(name, color, roughness=0.3, metallic=0.0):
     bsdf.inputs["Metallic"].default_value = metallic
     return mat
 
-blue = material("Ocean blue", (0.055, 0.27, 0.75), .28)
-belly = material("Soft ivory", (0.96, 0.91, 0.88), .4)
-eye = material("Deep navy eyes", (0.009, 0.016, 0.035), .16)
+blue = material("Soft blue", (0.11, 0.34, 0.80), .72)
+body_color = material("Matte whale skin", (1, 1, 1), .7)
+eye = material("Deep navy eyes", (0.009, 0.016, 0.035), .27)
 shine = material("Eye sparkle", (1, 1, 1), .2)
-cheek = material("Coral blush", (1, .43, .52), .45)
 smile_mat = material("Smile", (.016, .055, .14), .35)
-groove_mat = material("Belly grooves", (.76, .68, .66), .5)
+groove_mat = material("Belly grooves", (.74, .65, .67), .72)
 
 # X is the whale's length, Y its width, Z its height; the face is on the -Y side.
 rings = [
@@ -56,18 +55,36 @@ for i in range(len(rings) - 1):
         faces.append((i*N+j, i*N+(j+1)%N, (i+1)*N+(j+1)%N, (i+1)*N+j))
 mesh = bpy.data.meshes.new("Whale continuous body")
 mesh.from_pydata(vertices, [], faces)
-mesh.materials.append(blue)
-mesh.materials.append(belly)
+mesh.materials.append(body_color)
 mesh.update()
+nodes = body_color.node_tree.nodes
+vcol = nodes.new("ShaderNodeVertexColor")
+vcol.layer_name = "WhaleColors"
+body_color.node_tree.links.new(vcol.outputs["Color"], nodes.get("Principled BSDF").inputs["Base Color"])
 body = bpy.data.objects.new("Whale body", mesh)
 bpy.context.collection.objects.link(body)
 for polygon in mesh.polygons:
     polygon.use_smooth = True
-    angle = 2 * math.pi * ((polygon.index % N) + .5) / N
-    polygon.material_index = 1 if math.sin(angle) < -.46 else 0
 sub = body.modifiers.new("Smooth silhouette", "SUBSURF")
 sub.levels = 2
 sub.render_levels = 2
+bpy.context.view_layer.objects.active = body
+body.select_set(True)
+bpy.ops.object.modifier_apply(modifier=sub.name)
+body.select_set(False)
+# Color the already-smoothed surface, so the transition follows a level curve
+# without the visible ripples caused by interpolating the coarse control cage.
+mesh = body.data
+colors = mesh.color_attributes.new(name="WhaleColors", type="FLOAT_COLOR", domain="CORNER")
+blue_color = Vector((.11, .34, .80))
+belly_color = Vector((.98, .94, .91))
+for polygon in mesh.polygons:
+    for loop_index in polygon.loop_indices:
+        z = mesh.vertices[mesh.loops[loop_index].vertex_index].co.z
+        mix = max(0, min(1, (-.57-z) / .07))
+        mix = mix * mix * (3 - 2 * mix)
+        color = blue_color.lerp(belly_color, mix)
+        colors.data[loop_index].color = (*color, 1)
 
 def sphere(name, location, scale, mat):
     bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=20, location=location)
@@ -125,26 +142,67 @@ def curve(name, points, thickness, mat):
 # Put the facial features on the rounded nose (+X), not the side of the body.
 bpy.context.view_layer.update()
 body_surface = BVHTree.FromObject(body, bpy.context.evaluated_depsgraph_get())
-def nose_x(y, z):
-    hit, _, _, _ = body_surface.ray_cast(Vector((3, y, z)), Vector((-1, 0, 0)))
+def nose_surface(y, z):
+    hit, normal, _, _ = body_surface.ray_cast(Vector((3, y, z)), Vector((-1, 0, 0)))
     if hit is None:
         raise ValueError(f"No nose surface at {y}, {z}")
-    return hit.x
+    return hit, normal
+
+def surface_oval(name, y, z, size, mat, offset=.014):
+    point, normal = nose_surface(y, z)
+    obj = sphere(name, point + normal * offset, size, mat)
+    obj.rotation_euler = normal.to_track_quat("Z", "Y").to_euler()
+    return obj
+
+# A transparent radial texture makes the blush part of the surface rather than
+# two separate pink protrusions. It is packed into the exported GLB.
+image = bpy.data.images.new("Soft blush", width=64, height=64, alpha=True)
+pixels = []
+for row in range(64):
+    for col in range(64):
+        d = math.sqrt(((col-31.5)/31.5)**2 + ((row-31.5)/31.5)**2)
+        a = max(0.0, 1.0 - d)
+        pixels.extend((1.0, .56, .68, a*a*.7))
+image.pixels = pixels
+image.pack()
+blush = bpy.data.materials.new("Soft blush")
+blush.diffuse_color = (1, .38, .52, .5)
+blush.use_nodes = True
+blush.surface_render_method = "DITHERED"
+bsdf = blush.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs["Roughness"].default_value = .8
+tex = blush.node_tree.nodes.new("ShaderNodeTexImage")
+tex.image = image
+blush.node_tree.links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
+blush.node_tree.links.new(tex.outputs["Alpha"], bsdf.inputs["Alpha"])
+
+def blush_patch(y):
+    point, normal = nose_surface(y, -.18)
+    bpy.ops.mesh.primitive_plane_add(size=1, location=point + normal * .014)
+    obj = bpy.context.object
+    obj.name = "Soft blush"
+    obj.rotation_euler = normal.to_track_quat("Z", "Y").to_euler()
+    obj.scale = (.46, .32, 1)
+    obj.data.materials.append(blush)
+    return obj
 
 details = []
-for y in [-.43, .43]:
-    x = nose_x(y,.17)
-    details.append(sphere("Eye", (x+.025,y,.17), (.065,.115,.17), eye))
-    details.append(sphere("Eye highlight", (x+.085,y-.025,.235), (.016,.035,.05), shine))
-for y in [-.72, .72]:
-    details.append(sphere("Blush", (nose_x(y,-.12)+.02,y,-.12), (.035,.15,.075), cheek))
-details.append(curve("Happy smile", [(nose_x(y,z)+.035,y,z) for y,z in [(-.18,-.16), (0,-.22), (.18,-.16)]], .017, smile_mat))
+for y in [-.46, .46]:
+    details.append(surface_oval("Eye", y, .10, (.085,.15,.035), eye))
+    details.append(surface_oval("Eye highlight", y-.025, .16, (.022,.035,.012), shine, .051))
+for y in [-.75, .75]:
+    details.append(blush_patch(y))
+details.append(curve("Happy smile", [nose_surface(y,z)[0] + nose_surface(y,z)[1]*.025 for y,z in [(-.24,-.26), (0,-.32), (.24,-.26)]], .012, smile_mat))
 
 # Surface-following stripes on the lower front, on the ivory side of the body.
-for x in [-.65, -.30, .05, .40, .75]:
-    z0 = -.59
-    scale = max(.6, 1 - abs(x) * .23)
-    details.append(curve("Belly groove", [(x,-1.09*scale,z0), (x+.06,-.97*scale,-.79), (x+.12,-.68*scale,-1.02)], .008, groove_mat))
+for y in [-.65, -.35, 0, .35, .65]:
+    points = []
+    for z in [-.64, -.75, -.86, -.97, -1.07]:
+        hit, normal, _, _ = body_surface.ray_cast(Vector((3, y, z)), Vector((-1, 0, 0)))
+        if hit is not None:
+            points.append(hit + normal * .009)
+    if len(points) >= 2:
+        details.append(curve("Belly groove", points, .005, groove_mat))
 
 # A real deforming skeleton and named vertex groups export as a glTF skin.
 arm_data = bpy.data.armatures.new("Whale skeleton")

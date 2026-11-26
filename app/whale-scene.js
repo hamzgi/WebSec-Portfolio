@@ -24,7 +24,7 @@ function Whale() {
     if (!whale.current) return;
     const time = state.clock.getElapsedTime();
     const easing = 1 - Math.exp(-3 * delta);
-    whale.current.rotation.y = THREE.MathUtils.lerp(whale.current.rotation.y, state.pointer.x * 0.18 - 1.0, easing);
+    whale.current.rotation.y = THREE.MathUtils.lerp(whale.current.rotation.y, state.pointer.x * 0.18 - 0.88, easing);
     whale.current.rotation.x = THREE.MathUtils.lerp(whale.current.rotation.x, -state.pointer.y * 0.12 + 0.06, easing);
     whale.current.position.y = Math.sin(time * 0.85) * 0.11;
   });
@@ -58,10 +58,10 @@ export default function WhaleScene() {
     <Canvas dpr={[1, 1.75]} camera={{ position: [0, 0.05, 7.35], fov: 37 }}>
       <color attach="background" args={["#eaf7f4"]} />
       <fog attach="fog" args={["#eaf7f4", 6, 14]} />
-      <ambientLight intensity={1.6} />
-      <directionalLight position={[3.5, 4.5, 4]} intensity={2.5} color="#fff5e6" />
-      <pointLight position={[-4, -1, 2]} intensity={2} color="#70d7dd" />
-      <pointLight position={[2, -2, 1]} intensity={1.2} color="#ffb898" />
+      <ambientLight intensity={1.8} />
+      <directionalLight position={[3.5, 4.5, 4]} intensity={1.8} color="#fff8f3" />
+      <pointLight position={[-4, -1, 2]} intensity={1.2} color="#a9e7ea" />
+      <pointLight position={[2, -2, 1]} intensity={0.8} color="#ffd1c4" />
       <Suspense fallback={null}><Whale /></Suspense>
       <Bubbles />
     </Canvas>
