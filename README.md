@@ -7,16 +7,17 @@
 - Next.js 16 / React 19
 - TypeScript와 MongoDB / Mongoose 기반 콘텐츠 모델 및 서버 전용 연결
 - Auth.js GitHub OAuth 기반 관리자 로그인 및 GitHub 계정 ID 제한
+- 관리자 전용 자기소개·연락처·기술 스택·자격증·활동 이력 관리
 - Three.js + React Three Fiber 기반 3D 고래 히어로
 - 반응형 공개 포트폴리오 랜딩 페이지
 
-현재 공개 화면은 예시 데이터를 사용합니다. 관리자 로그인은 OAuth 설정 후 사용할 수 있으며, 콘텐츠 편집과 GitHub 동기화는 다음 단계에서 구현합니다.
+현재 공개 화면은 예시 데이터를 사용합니다. 관리자 화면의 데이터는 MongoDB에 저장되지만 공개 화면에는 아직 연결되지 않았습니다. 프로젝트 관리와 GitHub 동기화도 다음 단계에서 구현합니다.
 
 ## 다음 단계
 
 - MongoDB 기반 콘텐츠 관리
-- 관리자 콘텐츠 편집 화면
 - GitHub 레포지토리 동기화 및 프로젝트 상세 페이지
+- 저장된 콘텐츠의 공개 포트폴리오 연동
 - 보안 헤더, 권한 검사, 입력 검증 적용
 
 ## 로컬 실행
@@ -57,6 +58,12 @@ npm.cmd run dev
 4. 배포 환경에는 실제 배포 주소에 맞는 OAuth 앱과 서버 전용 환경 변수를 별도로 설정합니다. 프로덕션 예시 콜백은 `https://web-sec-portfolio.vercel.app/api/auth/callback/github`입니다. Vercel에서 사용할 `AUTH_SECRET`, `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET`, `ADMIN_GITHUB_ID`를 지정한 후 재배포하세요. MongoDB를 사용하는 기능을 배포할 때는 `MONGODB_URI`와 Atlas 네트워크 접근도 별도로 설정해야 합니다.
 
 Client Secret, AUTH_SECRET 및 데이터베이스 주소는 공유하거나 저장소에 커밋하지 않습니다. 관리자 인증은 GitHub에서 검증한 고유 ID를 서버에서 확인하며, 콘텐츠 변경 기능을 추가할 때에도 각 변경 요청에서 다시 권한을 확인해야 합니다.
+
+## 콘텐츠 관리
+
+`/admin`에서 자기소개와 연락처를 저장하고, 기술 스택·자격증·활동 이력을 추가·수정·삭제할 수 있습니다. 각각의 항목은 임시저장 또는 공개 예정 상태와 표시 순서를 지정합니다. 저장 실패 시 입력값은 화면에 유지됩니다. 아직 공개 페이지와 데이터가 연동되지 않았으므로 공개 예정으로 설정해도 즉시 사이트에 반영되지 않습니다.
+
+관리 기능은 실행 환경에서 데이터베이스 연결이 필요합니다. Vercel Production의 `MONGODB_URI`와 Atlas 네트워크 접근을 별도로 설정해야 배포된 관리자 화면에서 사용할 수 있습니다. 환경 변수 값과 실제 연결 주소는 로그나 저장소에 올리지 않습니다.
 
 ```powershell
 npm.cmd run typecheck
