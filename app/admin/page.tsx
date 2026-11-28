@@ -51,7 +51,15 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       { kind: "credential", title: "자격증", subtitle: "취득한 자격과 확인 링크를 기록해요.", items: credentials as Entry[] },
       { kind: "timeline", title: "활동 이력", subtitle: "지나온 경험을 타임라인으로 남겨요.", items: timeline as Entry[] },
     ];
-  } catch { databaseAvailable = false; }
+  } catch (error) {
+    databaseAvailable = false;
+    // Log only a coarse error class, never a URI, credentials, or driver message.
+    const category = !process.env.MONGODB_URI ? "missing_configuration"
+      : error instanceof Error && error.name === "MongooseServerSelectionError" ? "server_selection"
+      : error instanceof Error && error.name === "MongoServerError" ? "database_server"
+      : "other";
+    console.error(`Admin database unavailable: ${category}`);
+  }
 
   return (
     <main className={styles.page}>
